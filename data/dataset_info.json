@@ -1,4 +1,13 @@
 {
+  "jys_instruct":{
+    "file_name": "jys_medical_data/jys_instruct_demo.json"
+  },
+  "jys_pretrain": {
+    "file_name": "jys_medical_data/jys_pretrain_demo.json",
+    "columns": {
+      "prompt": "text"
+    }
+  },
   "identity": {
     "file_name": "identity.json"
   },
