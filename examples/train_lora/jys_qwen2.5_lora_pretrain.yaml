@@ -1,22 +1,22 @@
 ### model
-model_name_or_path: /root/autodl-tmp/Qwen/Qwen2.5-7B-Instruct
+model_name_or_path: /root/autodl-tmp/Qwen/Qwen2.5-7B
 
 ### method
-stage: sft
+stage: pt
 do_train: true
 finetuning_type: lora
 lora_target: all
 
 ### dataset
-dataset: jys_instruct
-template: qwen
+dataset: jys_pretrain
 cutoff_len: 1024
 max_samples: 1000
 overwrite_cache: true
 preprocessing_num_workers: 16
 
 ### output
-output_dir: saves/qwen2.5-instruct/lora/sft_demo
+output_dir: saves/qwen2.5-base/lora/pretrain_demo
+
 logging_steps: 1
 save_steps: 1
 plot_loss: true
@@ -24,7 +24,7 @@ overwrite_output_dir: true
 
 ### train
 per_device_train_batch_size: 1
-gradient_accumulation_steps: 1
+gradient_accumulation_steps: 2
 learning_rate: 1.0e-4
 num_train_epochs: 5.0
 lr_scheduler_type: cosine
@@ -36,4 +36,4 @@ ddp_timeout: 180000000
 val_size: 0.1
 per_device_eval_batch_size: 1
 eval_strategy: steps
-eval_steps: 1
+eval_steps: 500
