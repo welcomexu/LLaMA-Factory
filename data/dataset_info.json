@@ -9,7 +9,7 @@
     }
   },
   "jys_rec": {
-    "file_name": "jys_rec.json",
+    "file_name": "jys_rec/jys_rec.json",
     "formatting": "sharegpt",
     "columns": {
       "messages": "messages",
