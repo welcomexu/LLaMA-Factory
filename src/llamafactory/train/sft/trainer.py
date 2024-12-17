@@ -25,8 +25,9 @@ import torch
 from transformers import Seq2SeqTrainer
 from typing_extensions import override
 
+from ...extras import logging
 from ...extras.constants import IGNORE_INDEX
-from ...extras.logging import get_logger
+from ...extras.packages import is_transformers_version_equal_to_4_46, is_transformers_version_greater_than
 from ..callbacks import PissaConvertCallback, SaveProcessorCallback
 from ..trainer_utils import create_custom_optimizer, create_custom_scheduler
 
@@ -39,7 +40,7 @@ if TYPE_CHECKING:
     from ...hparams import FinetuningArguments
 
 
-logger = get_logger(__name__)
+logger = logging.get_logger(__name__)
 
 
 class CustomSeq2SeqTrainer(Seq2SeqTrainer):
@@ -50,6 +51,9 @@ class CustomSeq2SeqTrainer(Seq2SeqTrainer):
     def __init__(
         self, finetuning_args: "FinetuningArguments", processor: Optional["ProcessorMixin"], **kwargs
     ) -> None:
+        if is_transformers_version_greater_than("4.46"):
+            kwargs["processing_class"] = kwargs.pop("tokenizer")
+
         super().__init__(**kwargs)
         self.finetuning_args = finetuning_args
 
@@ -60,7 +64,7 @@ class CustomSeq2SeqTrainer(Seq2SeqTrainer):
             self.add_callback(PissaConvertCallback)
 
         if finetuning_args.use_badam:
-            from badam import BAdamCallback, clip_grad_norm_old_version
+            from badam import BAdamCallback, clip_grad_norm_old_version  # type: ignore
 
             self.accelerator.clip_grad_norm_ = MethodType(clip_grad_norm_old_version, self.accelerator)
             self.add_callback(BAdamCallback)
@@ -77,6 +81,22 @@ class CustomSeq2SeqTrainer(Seq2SeqTrainer):
     ) -> "torch.optim.lr_scheduler.LRScheduler":
         create_custom_scheduler(self.args, num_training_steps, optimizer)
         return super().create_scheduler(num_training_steps, optimizer)
+
+    @override
+    def compute_loss(self, model, inputs, return_outputs=False, **kwargs):
+        r"""
+        Fixes the loss value for transformers 4.46.0.
+        https://github.com/huggingface/transformers/blob/v4.46.0/src/transformers/trainer.py#L3605
+        """
+        loss = super().compute_loss(model, inputs, return_outputs, **kwargs)
+        if is_transformers_version_equal_to_4_46() and not getattr(self, "model_accepts_loss_kwargs", False):
+            # other model should not scale the loss
+            if return_outputs:
+                return (loss[0] / self.args.gradient_accumulation_steps, *loss[1:])
+            else:
+                return loss / self.args.gradient_accumulation_steps
+
+        return loss
 
     @override
     def prediction_step(
@@ -129,7 +149,7 @@ class CustomSeq2SeqTrainer(Seq2SeqTrainer):
             return
 
         output_prediction_file = os.path.join(self.args.output_dir, "generated_predictions.jsonl")
-        logger.info(f"Saving prediction results to {output_prediction_file}")
+        logger.info_rank0(f"Saving prediction results to {output_prediction_file}")
 
         labels = np.where(
             predict_results.label_ids != IGNORE_INDEX, predict_results.label_ids, self.tokenizer.pad_token_id
@@ -144,12 +164,9 @@ class CustomSeq2SeqTrainer(Seq2SeqTrainer):
                 preds[i] = np.concatenate((preds[i][pad_len[0] :], preds[i][: pad_len[0]]), axis=-1)
 
         decoded_inputs = self.tokenizer.batch_decode(dataset["input_ids"], skip_special_tokens=True)
-        decoded_labels = self.tokenizer.batch_decode(labels, skip_special_tokens=True)
         decoded_preds = self.tokenizer.batch_decode(preds, skip_special_tokens=True)
+        decoded_labels = self.tokenizer.batch_decode(labels, skip_special_tokens=True)
 
-        with open(output_prediction_file, "w", encoding="utf-8") as writer:
-            res: List[str] = []
-            for text, label, pred in zip(decoded_inputs, decoded_labels, decoded_preds):
-                res.append(json.dumps({"prompt": text, "label": label, "predict": pred}, ensure_ascii=False))
-
-            writer.write("\n".join(res))
+        with open(output_prediction_file, "w", encoding="utf-8") as f:
+            for text, pred, label in zip(decoded_inputs, decoded_preds, decoded_labels):
+                f.write(json.dumps({"prompt": text, "predict": pred, "label": label}, ensure_ascii=False) + "\n")
