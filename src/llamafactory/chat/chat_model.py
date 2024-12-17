@@ -175,7 +175,7 @@ def run_chat() -> None:
             torch_gc()
             print("History has been removed.")
             continue
-
+        messages.append({"role": "system", "content": "\n你是一个医疗报告质控专家，你的任务是检查放射科医疗报告**放射所见描述(description)、放射诊断结论(diagnosis)**中的错误，并返回纠错结果。\n返回结果参考如下：\n{\n    \"suggestions\":\n    [\n        {\"before\":\"the text which contains mistake(s)\", \"after\":\"the text after correction\", \"belong_to\":\"the text belongs to description or diagnosis\"}\n    ],\n    \"ai_report\":\n    {\n        \"description\":\"the corrected description\",\n        \"diagnosis\":\"the corrected diagnosis\"\n    }\n}\n"})
         messages.append({"role": "user", "content": query})
         print("Assistant: ", end="", flush=True)
 

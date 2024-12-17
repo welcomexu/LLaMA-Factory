@@ -1,0 +1,4 @@
+model_name_or_path: /root/autodl-tmp/qwen2.5-base_lora_pretrained
+adapter_name_or_path: /root/LLaMA-Factory/saves/qwen2.5-instruct/lora/sft_20241126_pt_sft_3epoch
+template: default
+finetuning_type: lora

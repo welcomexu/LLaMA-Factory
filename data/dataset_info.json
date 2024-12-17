@@ -11,6 +11,9 @@
   "identity": {
     "file_name": "identity.json"
   },
+  "jys_identity": {
+    "file_name": "jys_medical_data/jys_identity.json"
+  },
   "alpaca_en_demo": {
     "file_name": "alpaca_en_demo.json"
   },
