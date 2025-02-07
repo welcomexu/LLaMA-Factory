@@ -1,0 +1,4 @@
+model_name_or_path: /root/autodl-tmp/Qwen2-VL-2B-Instruct
+adapter_name_or_path: /root/autodl-tmp/train-lora/qwen2_vl-2b/20250104
+template: qwen2_vl
+infer_backend: huggingface  # choices: [huggingface, vllm]
